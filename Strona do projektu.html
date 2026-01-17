@@ -1,0 +1,201 @@
+﻿<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Zarządzania Pojazdami - Projekt Bootstrap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .btn-delete:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container py-5">
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-6 text-center text-md-start">
+                <h2 class="fw-bold text-primary"><i class="bi bi-car-front-fill"></i> Menedżer Floty</h2>
+            </div>
+            <div class="col-md-6 text-center text-md-end mt-3 mt-md-0">
+                <button class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#vehicleModal">
+                    <i class="bi bi-plus-lg"></i> Dodaj nowy pojazd
+                </button>
+            </div>
+        </div>
+
+        <div id="alertPlaceholder"></div>
+
+        <div class="table-container shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-4">Marka i Model</th>
+                            <th>Numer Rejestracyjny</th>
+                            <th>Rok Produkcji</th>
+                            <th class="text-end pe-4">Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vehicleTableBody">
+                        <tr>
+                            <td class="ps-4">Toyota Corolla</td>
+                            <td><span class="badge bg-info text-dark">WA 12345</span></td>
+                            <td>2022</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger delete-trigger"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="vehicleModal" tabindex="-1" aria-labelledby="vehicleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="vehicleModalLabel">Nowy Pojazd</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="vehicleForm" class="needs-validation" novalidate>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="brand" class="form-label fw-semibold">Marka i Model</label>
+                            <input type="text" class="form-control" id="brand" placeholder="np. Skoda Octavia" required minlength="2">
+                            <div class="invalid-feedback">Wpisz co najmniej 2 znaki.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="plate" class="form-label fw-semibold">Numer Rejestracyjny</label>
+                            <input type="text" class="form-control" id="plate" placeholder="np. KR 99887" required pattern="^[A-Z0-9 ]{5,10}$">
+                            <div class="invalid-feedback">Wymagany format: 5-10 dużych liter/cyfr.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="year" class="form-label fw-semibold">Rok Produkcji</label>
+                            <input type="number" class="form-control" id="year" min="1950" max="2026" required>
+                            <div class="invalid-feedback">Podaj rok z zakresu 1950 - 2026.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                        <button type="submit" class="btn btn-primary">Dodaj do listy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-exclamation-triangle text-danger display-4 mb-3"></i>
+                    <h5>Czy na pewno usunąć?</h5>
+                    <p class="text-muted small">Tej operacji nie można cofnąć.</p>
+                    <div class="d-flex justify-content-center gap-2 mt-3">
+                        <button class="btn btn-danger px-4" id="btnConfirmDelete">Usuń</button>
+                        <button class="btn btn-light border px-4" data-bs-dismiss="modal">Nie</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    const vehicleForm = document.getElementById('vehicleForm');
+    const vehicleTableBody = document.getElementById('vehicleTableBody');
+    const alertPlaceholder = document.getElementById('alertPlaceholder');
+    let currentRowToDelete = null;
+
+   
+    const appendAlert = (message, type) => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = [
+            `<div class="alert alert-${type} alert-dismissible fade show shadow-sm" role="alert">`,
+            `   <div><i class="bi bi-info-circle-fill me-2"></i> ${message}</div>`,
+            '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+            '</div>'
+        ].join('');
+        alertPlaceholder.append(wrapper);
+
+        
+        setTimeout(() => { wrapper.remove(); }, 4000);
+    };
+
+    
+    vehicleForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        if (!vehicleForm.checkValidity()) {
+            event.stopPropagation();
+            vehicleForm.classList.add('was-validated');
+        } else {
+            
+            const brand = document.getElementById('brand').value;
+            const plate = document.getElementById('plate').value;
+            const year = document.getElementById('year').value;
+
+           
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td class="ps-4">${brand}</td>
+                <td><span class="badge bg-info text-dark">${plate.toUpperCase()}</span></td>
+                <td>${year}</td>
+                <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger delete-trigger"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+
+            vehicleTableBody.appendChild(newRow);
+
+           
+            const modalElement = document.getElementById('vehicleModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            modal.hide();
+
+            vehicleForm.reset();
+            vehicleForm.classList.remove('was-validated');
+
+            appendAlert('Pojazd został dodany pomyślnie!', 'success');
+        }
+    }, false);
+
+   
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.delete-trigger')) {
+            currentRowToDelete = e.target.closest('tr');
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            deleteModal.show();
+        }
+    });
+
+    document.getElementById('btnConfirmDelete').addEventListener('click', function() {
+        if (currentRowToDelete) {
+            currentRowToDelete.remove();
+            appendAlert('Pojazd został usunięty z bazy danych.', 'danger');
+            bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+        }
+    });
+    </script>
+
+</body>
+</html>
